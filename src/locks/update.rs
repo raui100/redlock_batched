@@ -4,7 +4,7 @@ use redis::{aio::ConnectionManager, RedisResult};
 use tokio::sync::{mpsc::UnboundedReceiver, oneshot::Sender};
 use tracing::{trace, warn};
 
-use crate::redis_cmd::{extend_lock_cmd, load_extend_script};
+use crate::redis_cmd::{load_update_script, update_lock_ttl_cmd};
 
 use super::{RedisLock, UpdateResult};
 
@@ -15,7 +15,7 @@ pub async fn run(
     min_request_period: Duration,
 ) {
     // Loading the lock-extend script to redis
-    if let Err(error) = load_extend_script(&mut con).await {
+    if let Err(error) = load_update_script(&mut con).await {
         warn!(?error, "failed loading script for deleting locks");
     }
     let mut latest_request = Instant::now();
@@ -40,7 +40,11 @@ pub async fn run(
         // Batching lock extension in a pipeline
         let mut pipe = redis::pipe();
         for (lock, _) in &queue {
-            pipe.add_command(extend_lock_cmd(lock.name.clone(), lock.lock_id, lock.ttl));
+            pipe.add_command(update_lock_ttl_cmd(
+                lock.name.clone(),
+                lock.lock_id,
+                lock.ttl,
+            ));
         }
 
         // Sending pipeline to redis
@@ -61,7 +65,7 @@ pub async fn run(
             }
             Err(error) => {
                 if error.kind() == redis::ErrorKind::NoScriptError {
-                    if let Err(error) = load_extend_script(&mut con).await {
+                    if let Err(error) = load_update_script(&mut con).await {
                         warn!(?error, "failed loading script for deleting locks");
                     }
                 } else {

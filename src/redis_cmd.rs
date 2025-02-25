@@ -15,7 +15,7 @@ else
     return 1
 end"#;
 
-pub const EXTEND_LOCK_LUA: &str = r#"if redis.call("get", KEYS[1]) ~= ARGV[1] then
+pub const UPDATE_LOCK_TTL_LUA: &str = r#"if redis.call("get", KEYS[1]) ~= ARGV[1] then
   return 1
 else
   if redis.call("set", KEYS[1], ARGV[1], ARGV[2], ARGV[3]) ~= nil then
@@ -27,7 +27,8 @@ end
 "#;
 
 pub static DELETE_LOCK_SCRIPT: LazyLock<Script> = LazyLock::new(|| Script::new(DELETE_LOCK_LUA));
-pub static EXTEND_LOCK_SCRIPT: LazyLock<Script> = LazyLock::new(|| Script::new(EXTEND_LOCK_LUA));
+pub static UPDATE_LOCK_TTL_SCRIPT: LazyLock<Script> =
+    LazyLock::new(|| Script::new(UPDATE_LOCK_TTL_LUA));
 
 pub fn create_lock_cmd(lock: &RedisLock) -> Cmd {
     let (expiration, ttl) = TimeToLive::from(lock.ttl).command();
@@ -51,11 +52,11 @@ pub fn delete_lock_cmd(name: String, id: Uuid) -> Cmd {
     command
 }
 
-pub fn extend_lock_cmd(name: String, id: Uuid, ttl: Duration) -> Cmd {
+pub fn update_lock_ttl_cmd(name: String, id: Uuid, ttl: Duration) -> Cmd {
     let (expiration, duration) = TimeToLive::from(ttl).command();
     let mut command = cmd("EVALSHA");
     command
-        .arg(EXTEND_LOCK_SCRIPT.get_hash())
+        .arg(UPDATE_LOCK_TTL_SCRIPT.get_hash())
         .arg(1)
         .arg(name)
         .arg(id.to_string())
@@ -65,8 +66,11 @@ pub fn extend_lock_cmd(name: String, id: Uuid, ttl: Duration) -> Cmd {
 }
 
 /// Loading the script for extending locks to redis
-pub async fn load_extend_script(con: &mut impl ConnectionLike) -> RedisResult<String> {
-    EXTEND_LOCK_SCRIPT.prepare_invoke().load_async(con).await
+pub async fn load_update_script(con: &mut impl ConnectionLike) -> RedisResult<String> {
+    UPDATE_LOCK_TTL_SCRIPT
+        .prepare_invoke()
+        .load_async(con)
+        .await
 }
 
 /// Loading the script for deleting locks to redis
@@ -114,14 +118,14 @@ pub async fn delete_lock(
 }
 
 /// Extending a single lock
-pub async fn extend_lock(
+pub async fn update_lock_ttl(
     con: &mut impl ConnectionLike,
     lock_name: String,
     lock_id: Uuid,
     ttl: Duration,
 ) -> RedisResult<UpdateResult> {
     let (expiration, duration) = TimeToLive::from(ttl).command();
-    EXTEND_LOCK_SCRIPT
+    UPDATE_LOCK_TTL_SCRIPT
         .prepare_invoke()
         .key(lock_name)
         .arg(lock_id.to_string())

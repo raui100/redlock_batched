@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use redis::{aio::ConnectionManager, AsyncCommands};
 use redlock_batched::{
-    redis_cmd::{create_lock, delete_lock, extend_lock},
+    redis_cmd::{create_lock, delete_lock, update_lock_ttl},
     CreationResult, DeleteResult, LockManager, RedisLock, UpdateResult,
 };
 use testcontainers::{core::WaitFor, runners::AsyncRunner, ContainerAsync, Image, ImageExt};
@@ -36,7 +36,7 @@ async fn integration_test_inner(container: ContainerAsync<impl Image>, mut con: 
 
     debug!("Extending the TTL of the lock");
     let ttl: u32 = con.ttl(&lock.name).await.unwrap();
-    extend_lock(
+    update_lock_ttl(
         &mut con,
         lock.name.clone(),
         lock.lock_id,
