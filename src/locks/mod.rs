@@ -58,4 +58,7 @@ impl RedisLock {
             ..self
         }
     }
+    pub fn with_ttl(self, ttl: Duration) -> Self {
+        Self { ttl, ..self }
+    }
 }

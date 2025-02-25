@@ -76,7 +76,7 @@ async fn integration_test_inner(container: ContainerAsync<impl Image>, mut con: 
 
     // Setting the TTL to zero for the current lock
     let result = manager
-        .extend_lock_with_result(&RedisLock {
+        .update_lock_ttl_with_result(&RedisLock {
             ttl: Duration::from_millis(1),
             ..lock.clone()
         })
@@ -86,7 +86,7 @@ async fn integration_test_inner(container: ContainerAsync<impl Image>, mut con: 
 
     // Deleting the current lock fails because it is already expired
     tokio::time::sleep(Duration::from_millis(100)).await; // waiting a little for redis to expire the lock
-    let ext = manager.extend_lock_with_result(&lock).await.unwrap();
+    let ext = manager.update_lock_ttl_with_result(&lock).await.unwrap();
     let del = manager
         .delete_lock_with_result(lock.name, lock.lock_id)
         .await
@@ -113,7 +113,7 @@ async fn integration_test_inner(container: ContainerAsync<impl Image>, mut con: 
     debug!("Extending all locks");
     let mut tasks = tokio::task::JoinSet::new();
     for (lock, _) in results {
-        let rx = manager.extend_lock_with_result(&lock);
+        let rx = manager.update_lock_ttl_with_result(&lock);
         tasks.spawn(async move { (lock, rx.await) });
     }
     let results = tokio::time::timeout(Duration::from_secs(5), tasks.join_all())
@@ -164,7 +164,7 @@ async fn integration_test_inner(container: ContainerAsync<impl Image>, mut con: 
 pub async fn create_extend_delete(manager: Arc<LockManager>, lock: RedisLock) {
     let result = manager.create_lock(&lock).await.unwrap();
     assert_eq!(result, CreationResult::Ready);
-    let result = manager.extend_lock_with_result(&lock).await.unwrap();
+    let result = manager.update_lock_ttl_with_result(&lock).await.unwrap();
     assert_eq!(result, UpdateResult::Updated);
     let result = manager
         .delete_lock_with_result(lock.name, lock.lock_id)

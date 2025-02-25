@@ -130,12 +130,12 @@ impl LockManager {
     }
 
     /// Extends the time to live of an existing lock.
-    pub fn extend_lock(&self, lock: &RedisLock) {
+    pub fn update_lock_ttl(&self, lock: &RedisLock) {
         self.extend.send((lock.clone(), None)).expect(MSG);
     }
 
     /// Extends the time to live of an existing lock.
-    pub fn extend_lock_with_result(&self, lock: &RedisLock) -> Receiver<UpdateResult> {
+    pub fn update_lock_ttl_with_result(&self, lock: &RedisLock) -> Receiver<UpdateResult> {
         let (tx, rx) = channel();
         self.extend.send((lock.clone(), Some(tx))).expect(MSG);
         rx
