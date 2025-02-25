@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Creating, updating and deleting redis locks (Redlock) in batches"
+repository = "https://github.com/raui100/redlock_batched"
+authors = ["Raui Ghazaleh <rj.ghazaleh@gmail.com>"]
+readme = "README.md"
 
 [dependencies]
 redis = { version = "0.29.0", features = ["aio", "connection-manager", "tokio-comp"] }
