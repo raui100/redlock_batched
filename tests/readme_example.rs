@@ -29,7 +29,7 @@ async fn main() {
     // Deleting the lock
     let rx = manager.delete_lock_with_result(lock.name.clone(), lock.lock_id);
     match rx.await.unwrap() {
-        redlock_batched::DeleteResult::Deleted => println!("the lock has been delete"),
+        redlock_batched::DeleteResult::Deleted => println!("the lock has been deleted"),
         redlock_batched::DeleteResult::Expired => unreachable!(),
     }
     let value: Option<String> = con.get(&lock.name).await.unwrap();
